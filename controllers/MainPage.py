@@ -22,7 +22,6 @@ class MainPage(webapp2.RequestHandler):
         else:
             url = users.create_login_url(self.request.uri)
             url_linktext = 'Login'
-        logging.info(jinja_environment.loader.searchpath)
         template = jinja_environment.get_template('index.html')
         self.response.out.write(template.render(greetings=greetings,
                                                 url=url,
