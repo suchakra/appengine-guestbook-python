@@ -1,57 +1,46 @@
-import jinja2
+
+
+import sys
 import os
+import logging
 import webapp2
 
-from google.appengine.api import users
-from google.appengine.ext import ndb
+# Setup the import path
+package_dir = "controllers"
+package_dir_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), package_dir))
 
+# Allow unzipped packages to be imported
+# from packages folder
+if not package_dir_path in sys.path:
+	logging.info(sys.path)
+	sys.path.insert(0, package_dir_path)
+	logging.info("Inserting controllers in path")
+logging.info(sys.path)
 
-# We set a parent key on the 'Greetings' to ensure that they are all in the same
-# entity group. Queries across the single entity group will be consistent.
-# However, the write rate should be limited to ~1/second.
+if not package_dir_path in sys.path:
+	logging.info("insert failed")
+logging.info("insert succeeded")
+# Append zip archives to path for zipimport
+# for filename in os.listdir(package_dir_path):
+#     if filename.endswith((".zip", ".egg")):
+#         path = "%s/%s" % (package_dir_path, filename)
+#         if not path in sys.path:
+#             logging.debug('Adding zip package %s to path' % path)
+#             sys.path.insert(0, path)
 
-def guestbook_key(guestbook_name='default_guestbook'):
-    return ndb.Key('Guestbook', guestbook_name)
-
-jinja_environment = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
-
-class Greeting(ndb.Model):
-    author = ndb.UserProperty()
-    content = ndb.StringProperty(indexed=False)
-    date = ndb.DateTimeProperty(auto_now_add=True)
-
-class MainPage(webapp2.RequestHandler):
-    def get(self):
-        greetings_query = Greeting.query(ancestor=guestbook_key()).order(-Greeting.date)
-        greetings = greetings_query.fetch(10)
-
-        if users.get_current_user():
-            url = users.create_logout_url(self.request.uri)
-            url_linktext = 'Logout'
-        else:
-            url = users.create_login_url(self.request.uri)
-            url_linktext = 'Login'
-
-        template = jinja_environment.get_template('index.html')
-        self.response.out.write(template.render(greetings=greetings,
-                                                url=url,
-                                                url_linktext=url_linktext))
-
-class Guestbook(webapp2.RequestHandler):
-    def post(self):
-        greeting = Greeting(parent=guestbook_key())
-
-        if users.get_current_user():
-            greeting.author = users.get_current_user()
-
-        greeting.content = self.request.get('content')
-        greeting.put()
-        self.redirect('/')
+from controllers import MainPage
+from controllers import Guestbook
 
 application = webapp2.WSGIApplication([
-    ('/', MainPage),
-    ('/sign', Guestbook),
+    ('/', MainPage.MainPage),
+    ('/sign', Guestbook.Guestbook),
 ], debug=True)
+
+# Extra Hanlder like 404 500 etc
+def handle_404(request, response, exception):
+    logging.exception(exception)
+    response.write('Oops! we are not here, leave a message ... (This is a 404)')
+    response.set_status(404)
+
+application.error_handlers[404] = handle_404
